@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "textbook-ai"
+version = "0.1.0"
+description = ""
+authors = ["them1n9 <iamanidiotm@gmail.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.10"
+gradio = "^4.43.0"
+python-dotenv = "^1.0.1"
+google-generativeai = "^0.7.2"
+fastapi = "^0.114.2"
+uvicorn = "^0.30.6"
+pypdf2 = "^3.0.1"
+jinja2 = "^3.1.4"
+python-multipart = "^0.0.9"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
