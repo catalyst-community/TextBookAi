@@ -68,7 +68,12 @@
 
                     topicObj.sub_topics.forEach((subTopic) => {
                       if (typeof subTopic === "string") {
-                        topicHTML += `<li>${subTopic}</li>`;
+                        // Create a link for each subtopic that navigates to the FastAPI subtopic route
+                        topicHTML += `<li><a href="/subtopic?topic=${encodeURIComponent(
+                          topicObj.topic
+                        )}&subtopic=${encodeURIComponent(
+                          subTopic
+                        )}" target="_blank">${subTopic}</a></li>`;
                       } else if (
                         typeof subTopic === "object" &&
                         subTopic.name
@@ -76,7 +81,11 @@
                         // Handle sub-subtopics
                         topicHTML += `<li><strong>${subTopic.name}</strong><ul>`;
                         subTopic.sub_sub_topics.forEach((subSubTopic) => {
-                          topicHTML += `<li>${subSubTopic}</li>`;
+                          topicHTML += `<li><a href="/subtopic?topic=${encodeURIComponent(
+                            topicObj.topic
+                          )}&subtopic=${encodeURIComponent(
+                            subSubTopic
+                          )}" target="_blank">${subSubTopic}</a></li>`;
                         });
                         topicHTML += "</ul></li>";
                       }
