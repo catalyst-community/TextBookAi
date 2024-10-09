@@ -11,7 +11,13 @@
   </head>
   <body>
     <div class="container mt-5">
-      <h1 class="text-center">Upload PDF</h1>
+      <header class="d-flex justify-content-between mb-4">
+        <h1 class="text-center">Upload PDF</h1>
+        <div>
+          <a href="/login" class="btn btn-outline-primary me-2">Login</a>
+          <a href="/signup" class="btn btn-outline-primary">Sign Up</a>
+        </div>
+      </header>
       <form
         action="/upload_pdf/"
         method="post"

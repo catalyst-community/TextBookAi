@@ -16,6 +16,13 @@ uvicorn = "^0.30.6"
 pypdf2 = "^3.0.1"
 jinja2 = "^3.1.4"
 python-multipart = "^0.0.9"
+sqlalchemy = "^2.0.35"
+psycopg2-binary = "^2.9.9"
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+python-jose = "^3.3.0"
+psycopg2 = "^2.9.9"
+fastapi-login = "^1.10.2"
+fastapi-session = "0.2.7"
 
 
 [build-system]
