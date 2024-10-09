@@ -11,7 +11,30 @@
   </head>
   <body>
     <div class="container mt-5">
-      <h1 class="text-center">Upload PDF</h1>
+      <header class="d-flex justify-content-between mb-4">
+        <h1 class="text-center">Upload PDF</h1>
+        <div>
+          {% if username %}
+          <!-- Logout button -->
+          <a href="/logout" class="btn btn-outline-danger me-2">Logout</a>
+          {% else %}
+          <!-- If not logged in, show login and signup buttons -->
+          <a href="/login" class="btn btn-outline-primary me-2">Login</a>
+          <a href="/signup" class="btn btn-outline-primary">Sign Up</a>
+          {% endif %}
+        </div>
+      </header>
+
+      <!-- User Details Section -->
+      <div id="user-details" class="mb-3">
+        {% if username %}
+        <h5>Welcome, {{ username }}!</h5>
+        <p>Email ID: {{ emailid }}</p>
+        {% else %}
+        <h5>Please log in to upload your PDF.</h5>
+        {% endif %}
+      </div>
+
       <form
         action="/upload_pdf/"
         method="post"

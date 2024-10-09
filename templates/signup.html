@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign Up</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f7f7f7;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+
+      .signup-container {
+        background-color: #ffffff;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 400px;
+        text-align: center;
+      }
+
+      h1 {
+        color: #333;
+        font-size: 24px;
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        margin: 10px 0 5px;
+        text-align: left;
+        color: #555;
+      }
+
+      input {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 15px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        box-sizing: border-box;
+        font-size: 14px;
+        background-color: #f9f9f9;
+      }
+
+      button {
+        width: 100%;
+        padding: 10px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      .error {
+        display: none;
+        color: #d9534f;
+        margin-top: 10px;
+        font-size: 14px;
+      }
+
+      .info {
+        margin-top: 10px;
+        font-size: 14px;
+        color: #555;
+      }
+
+      a {
+        color: #007bff;
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="signup-container">
+      <h1>Sign Up</h1>
+      <form id="signupForm" action="/signup" method="post">
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required />
+
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required />
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required />
+
+        <button type="submit">Sign Up</button>
+
+        <!-- Error message -->
+        <p class="error" id="error-msg">Email or Username already exists.</p>
+      </form>
+
+      <!-- Already have an account? -->
+      <p class="info">
+        Already have an account? <a href="/login">Login here</a>
+      </p>
+    </div>
+
+    <script>
+      document
+        .getElementById("signupForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          // Perform an AJAX request to the server for sign up
+          const formData = new FormData(this);
+          const response = await fetch(this.action, {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            // Show error message if the response is not okay
+            document.getElementById("error-msg").style.display = "block";
+          } else {
+            // Redirect to login page after successful sign up
+            window.location.href = "/login";
+          }
+        });
+    </script>
+  </body>
+</html>
