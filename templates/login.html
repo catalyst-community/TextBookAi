@@ -4,27 +4,89 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login</title>
-    <link rel="stylesheet" href="/static/style.css" />
-    <!-- Add your CSS file here if needed -->
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+      }
+
+      .login-container {
+        width: 300px;
+        margin: 100px auto;
+        text-align: center;
+      }
+
+      input {
+        margin: 10px;
+        padding: 10px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      button {
+        padding: 10px;
+        width: 100%;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background-color: #45a049;
+      }
+
+      .error {
+        color: red;
+        display: none;
+        font-size: 0.9em;
+        margin-top: 10px;
+      }
+    </style>
   </head>
   <body>
-    <h1>Login</h1>
-    <form action="/login" method="post">
-      <input
-        type="email"
-        name="email"
-        placeholder="Enter your email"
-        required
-      />
-      <input
-        type="password"
-        name="password"
-        placeholder="Enter your password"
-        required
-      />
-      <button type="submit">Login</button>
-    </form>
+    <div class="login-container">
+      <h1>Login</h1>
+      <form id="loginForm" action="/login" method="post">
+        <input
+          type="email"
+          name="email"
+          placeholder="Enter your email"
+          required
+        />
+        <input
+          type="password"
+          name="password"
+          placeholder="Enter your password"
+          required
+        />
+        <button type="submit">Login</button>
+        <p class="error" id="error-msg">
+          Invalid email or password. Please try again.
+        </p>
+      </form>
+    </div>
 
-    <p>Don't have an account? <a href="/signup">Sign Up</a></p>
+    <script>
+      document
+        .getElementById("loginForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          // Perform an AJAX request to the server for login
+          const formData = new FormData(this);
+          const response = await fetch(this.action, {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            // Show error message if the response is not okay
+            document.getElementById("error-msg").style.display = "block";
+          } else {
+            // Redirect to the home page or wherever you want after a successful login
+            window.location.href = "/";
+          }
+        });
+    </script>
   </body>
 </html>

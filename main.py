@@ -1,15 +1,31 @@
-from fastapi import FastAPI, Request, Form, HTTPException, UploadFile, File, Query
+from fastapi import (
+    FastAPI,
+    Request,
+    Form,
+    HTTPException,
+    UploadFile,
+    File,
+    Query,
+    Depends,
+    Cookie,
+)
+from starlette.requests import Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from pathlib import Path
 import os
 from pdf import upload_to_gemini, generate_topics
 from passlib.context import CryptContext
+import logging
 
 # Set up FastAPI
 app = FastAPI()
+
+# Add session middleware (from starlette)
+app.add_middleware(SessionMiddleware, secret_key="your_secret_key_here")
 
 # Set up Jinja2 templates
 templates = Jinja2Templates(directory="templates")
@@ -18,7 +34,7 @@ templates = Jinja2Templates(directory="templates")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-# Mock database function
+# Mock database connection function
 def get_db_connection():
     return psycopg2.connect(
         database="myapp_db",
@@ -29,12 +45,12 @@ def get_db_connection():
 
 
 # Hash the password
-def hash_password(password: str):
+def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
 # Verify password
-def verify_password(plain_password: str, hashed_password: str):
+def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
@@ -62,10 +78,11 @@ async def signup(
         conn.commit()
     except psycopg2.errors.UniqueViolation:
         conn.rollback()
-        raise HTTPException(status_code=400, detail="Email or Username already exists")
+        return HTMLResponse(status_code=400, content="Email or Username already exists")
     finally:
         cur.close()
         conn.close()
+
     return RedirectResponse(url="/login", status_code=302)
 
 
@@ -76,24 +93,56 @@ async def get_login(request: Request):
 
 
 @app.post("/login")
-async def login(request: Request, email: str = Form(...), password: str = Form(...)):
+async def login(
+    request: Request,
+    email: str = Form(...),
+    password: str = Form(...),
+):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute("SELECT * FROM authentication WHERE emailID = %s", (email,))
-    user = cur.fetchone()
-    cur.close()
-    conn.close()
+    try:
+        cur.execute("SELECT * FROM authentication WHERE emailID = %s", (email,))
+        user = cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
 
     if not user or not verify_password(password, user["password"]):
-        raise HTTPException(status_code=400, detail="Invalid email or password")
+        return HTMLResponse(status_code=400, content="Invalid email or password")
+
+    # Store user information in session
+    request.session["emailid"] = user["emailid"]
+    request.session["username"] = user["username"]
 
     return RedirectResponse(url="/", status_code=302)
+
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+
+
+@app.get("/logout")
+def logout(request: Request):
+    username = request.session.get("username")  # Get the username from the session
+    logging.info(f"Logging out user: {username}")
+
+    # Clear the session
+    request.session.clear()  # Clear all session data
+
+    # Redirect to home page
+    response = RedirectResponse(url="/")  # Redirect to home page
+    logging.info("Session cleared. Redirecting to home page.")
+    return response
 
 
 # Home route
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    username = request.session.get("username")
+    emailid = request.session.get("emailid")  # Fetch the email ID from the session
+    return templates.TemplateResponse(
+        "index.html", {"request": request, "username": username, "emailid": emailid}
+    )
 
 
 # Route to upload PDF and generate topics
@@ -103,10 +152,10 @@ async def upload_pdf(file: UploadFile = File(...)):
     temp_dir.mkdir(exist_ok=True)
 
     if not file.filename:
-        return {"error": "No file uploaded"}
+        raise HTTPException(status_code=400, detail="No file uploaded")
 
     if not file.filename.endswith(".pdf"):
-        return {"error": "Only PDF files are allowed"}
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
 
     file_location = temp_dir / file.filename
     with open(file_location, "wb") as f:
@@ -117,7 +166,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         topics = generate_topics(uploaded_file)
         return {"topics": topics}
     finally:
-        os.remove(file_location)
+        os.remove(file_location)  # Clean up the uploaded file
 
 
 # Subtopic route
