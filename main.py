@@ -10,7 +10,7 @@ from fastapi import (
     Cookie,
 )
 from starlette.requests import Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 import psycopg2
@@ -98,6 +98,8 @@ async def login(
     email: str = Form(...),
     password: str = Form(...),
 ):
+    # Assuming successful authentication
+
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     try:
@@ -147,7 +149,14 @@ async def home(request: Request):
 
 # Route to upload PDF and generate topics
 @app.post("/upload_pdf/")
-async def upload_pdf(file: UploadFile = File(...)):
+async def upload_pdf(request: Request, file: UploadFile = File(...)):
+    username = request.session.get("username")  # Check if user is logged in
+    if not username:
+        return JSONResponse(
+            content={"error": "You need to be logged in to upload a file."},
+            status_code=401,
+        )
+
     temp_dir = Path("./temp_files")
     temp_dir.mkdir(exist_ok=True)
 

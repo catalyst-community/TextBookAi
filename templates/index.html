@@ -15,17 +15,14 @@
         <h1 class="text-center">Upload PDF</h1>
         <div>
           {% if username %}
-          <!-- Logout button -->
           <a href="/logout" class="btn btn-outline-danger me-2">Logout</a>
           {% else %}
-          <!-- If not logged in, show login and signup buttons -->
           <a href="/login" class="btn btn-outline-primary me-2">Login</a>
           <a href="/signup" class="btn btn-outline-primary">Sign Up</a>
           {% endif %}
         </div>
       </header>
 
-      <!-- User Details Section -->
       <div id="user-details" class="mb-3">
         {% if username %}
         <h5>Welcome, {{ username }}!</h5>
@@ -78,7 +75,6 @@
             const data = await response.json();
             let topicsHTML = "<h3>Generated Topics</h3><ul>";
 
-            // Function to recursively display topics, subtopics, and sub-subtopics
             function renderTopics(topicList) {
               return topicList
                 .map((topicObj) => {
@@ -88,10 +84,8 @@
                     topicObj.sub_topics.length > 0
                   ) {
                     topicHTML += "<ul>";
-
                     topicObj.sub_topics.forEach((subTopic) => {
                       if (typeof subTopic === "string") {
-                        // Create a link for each subtopic that navigates to the FastAPI subtopic route
                         topicHTML += `<li><a href="/subtopic?topic=${encodeURIComponent(
                           topicObj.topic
                         )}&subtopic=${encodeURIComponent(
@@ -101,7 +95,6 @@
                         typeof subTopic === "object" &&
                         subTopic.name
                       ) {
-                        // Handle sub-subtopics
                         topicHTML += `<li><strong>${subTopic.name}</strong><ul>`;
                         subTopic.sub_sub_topics.forEach((subSubTopic) => {
                           topicHTML += `<li><a href="/subtopic?topic=${encodeURIComponent(
@@ -113,7 +106,6 @@
                         topicHTML += "</ul></li>";
                       }
                     });
-
                     topicHTML += "</ul>";
                   }
                   topicHTML += "</li>";
@@ -122,7 +114,6 @@
                 .join("");
             }
 
-            // Check if 'topics' is an array and has elements
             if (Array.isArray(data.topics) && data.topics.length > 0) {
               topicsHTML += renderTopics(data.topics);
             } else {
@@ -132,8 +123,9 @@
             topicsHTML += "</ul>";
             responseDiv.innerHTML = topicsHTML;
           } else {
+            const errorData = await response.json();
             responseDiv.innerHTML =
-              "Failed to upload the PDF or generate topics.";
+              errorData.error || "Failed to upload the PDF or generate topics.";
           }
         } catch (error) {
           responseDiv.innerHTML = `Error: ${error.message}`;
