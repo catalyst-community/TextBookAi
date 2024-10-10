@@ -28,10 +28,12 @@
         <h5>Welcome, {{ username }}!</h5>
         <p>Email ID: {{ emailid }}</p>
         {% else %}
-        <h5>Please log in to upload your PDF.</h5>
+        <h5 style="color: rgb(233, 59, 59)">
+          <i>**Please log in to upload your PDF.**</i>
+        </h5>
         {% endif %}
       </div>
-
+      <br />
       <form
         action="/upload_pdf/"
         method="post"
