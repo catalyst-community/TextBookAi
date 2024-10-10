@@ -98,9 +98,10 @@
       <h1>Login</h1>
       <form id="loginForm" action="/login" method="post">
         <input
-          type="email"
-          name="email"
-          placeholder="Enter your email"
+          type="text"
+          id="login-field"
+          name="login"
+          placeholder="Enter your email or username"
           required
         />
         <input
@@ -110,6 +111,7 @@
           required
         />
         <button type="submit">Login</button>
+
         <p class="error" id="error-msg">
           Invalid email or password. Please try again.
         </p>
@@ -123,8 +125,20 @@
         .addEventListener("submit", async function (e) {
           e.preventDefault();
 
+          // Get the input value from the login field
+          const loginValue = document.getElementById("login-field").value;
+
+          // Determine if the input is an email or username
+          let loginMethod = "username"; // default to username
+          if (loginValue.includes("@")) {
+            // If it contains an "@", treat it as an email
+            loginMethod = "email";
+          }
+
           // Perform an AJAX request to the server for login
           const formData = new FormData(this);
+          formData.append("login_method", loginMethod); // Append login method
+
           const response = await fetch(this.action, {
             method: "POST",
             body: formData,

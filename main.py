@@ -84,7 +84,7 @@ async def get_login(request: Request):
 @app.post("/login")
 async def login(
     request: Request,
-    email: str = Form(...),
+    login: str = Form(...),
     password: str = Form(...),
 ):
     # Assuming successful authentication
@@ -92,7 +92,10 @@ async def login(
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     try:
-        cur.execute("SELECT * FROM authentication WHERE email = %s", (email,))
+        cur.execute(
+            "SELECT * FROM authentication WHERE email = %s or username = %s",
+            (login, login),
+        )
         user = cur.fetchone()
     finally:
         cur.close()
