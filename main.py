@@ -6,8 +6,6 @@ from fastapi import (
     UploadFile,
     File,
     Query,
-    Depends,
-    Cookie,
 )
 from starlette.requests import Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -17,6 +15,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from pathlib import Path
 import os
+from db import hash_password, verify_password
 from pdf import upload_to_gemini, generate_topics
 from passlib.context import CryptContext
 import logging
@@ -37,21 +36,11 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # Mock database connection function
 def get_db_connection():
     return psycopg2.connect(
-        database="myapp_db",
-        user="myapp_user",
-        password="password",
-        host="localhost",
+        database="postgres",
+        user="postgres.xdvwtpqclkedpktjsrzc",
+        password="aOoDlcdghQ39Gkjr",
+        host="aws-0-us-east-1.pooler.supabase.com",
     )
-
-
-# Hash the password
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
-
-
-# Verify password
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
 
 
 # Sign-up route

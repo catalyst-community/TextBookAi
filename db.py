@@ -1,5 +1,3 @@
-from fastapi import HTTPException
-import psycopg2
 from passlib.context import CryptContext
 
 # Password hashing settings
@@ -14,19 +12,3 @@ def hash_password(password: str):
 # Function to verify hashed password
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
-
-
-# PostgreSQL connection setup
-def get_db_connection():
-    try:
-        conn = psycopg2.connect(
-            database="myapp_db",
-            user="myapp_user",
-            password="password",
-            host="localhost",
-            port="5432",
-        )
-        return conn
-    except psycopg2.DatabaseError as e:
-        print(f"Database connection error: {e}")
-        raise HTTPException(status_code=500, detail="Database connection failed")
