@@ -15,26 +15,24 @@
         <h1 class="text-center">Upload PDF</h1>
         <div>
           {% if username %}
-          <!-- Logout button -->
           <a href="/logout" class="btn btn-outline-danger me-2">Logout</a>
           {% else %}
-          <!-- If not logged in, show login and signup buttons -->
           <a href="/login" class="btn btn-outline-primary me-2">Login</a>
           <a href="/signup" class="btn btn-outline-primary">Sign Up</a>
           {% endif %}
         </div>
       </header>
 
-      <!-- User Details Section -->
       <div id="user-details" class="mb-3">
         {% if username %}
         <h5>Welcome, {{ username }}!</h5>
-        <p>Email ID: {{ emailid }}</p>
         {% else %}
-        <h5>Please log in to upload your PDF.</h5>
+        <h5 style="color: rgb(233, 59, 59)">
+          <i>**Please log in to upload your PDF.**</i>
+        </h5>
         {% endif %}
       </div>
-
+      <br />
       <form
         action="/upload_pdf/"
         method="post"
@@ -55,6 +53,32 @@
         <button type="submit" class="btn btn-primary">Upload</button>
       </form>
       <div id="response" class="mt-4"></div>
+    </div>
+
+    <!-- Toast for notifications -->
+    <div
+      class="toast-container position-fixed top-0 end-0 p-3"
+      style="z-index: 11"
+    >
+      <div
+        id="uploadToast"
+        class="toast align-items-center text-white bg-danger border-0"
+        role="alert"
+        aria-live="assertive"
+        aria-atomic="true"
+      >
+        <div class="d-flex">
+          <div class="toast-body">
+            Failed to upload. Please ensure you are logged in and try again.
+          </div>
+          <button
+            type="button"
+            class="btn-close btn-close-white me-2 m-auto"
+            data-bs-dismiss="toast"
+            aria-label="Close"
+          ></button>
+        </div>
+      </div>
     </div>
 
     <script>
@@ -78,7 +102,6 @@
             const data = await response.json();
             let topicsHTML = "<h3>Generated Topics</h3><ul>";
 
-            // Function to recursively display topics, subtopics, and sub-subtopics
             function renderTopics(topicList) {
               return topicList
                 .map((topicObj) => {
@@ -88,10 +111,8 @@
                     topicObj.sub_topics.length > 0
                   ) {
                     topicHTML += "<ul>";
-
                     topicObj.sub_topics.forEach((subTopic) => {
                       if (typeof subTopic === "string") {
-                        // Create a link for each subtopic that navigates to the FastAPI subtopic route
                         topicHTML += `<li><a href="/subtopic?topic=${encodeURIComponent(
                           topicObj.topic
                         )}&subtopic=${encodeURIComponent(
@@ -101,7 +122,6 @@
                         typeof subTopic === "object" &&
                         subTopic.name
                       ) {
-                        // Handle sub-subtopics
                         topicHTML += `<li><strong>${subTopic.name}</strong><ul>`;
                         subTopic.sub_sub_topics.forEach((subSubTopic) => {
                           topicHTML += `<li><a href="/subtopic?topic=${encodeURIComponent(
@@ -113,7 +133,6 @@
                         topicHTML += "</ul></li>";
                       }
                     });
-
                     topicHTML += "</ul>";
                   }
                   topicHTML += "</li>";
@@ -122,23 +141,26 @@
                 .join("");
             }
 
-            // Check if 'topics' is an array and has elements
-            if (Array.isArray(data.topics) && data.topics.length > 0) {
-              topicsHTML += renderTopics(data.topics);
-            } else {
-              topicsHTML += "<li>No topics found.</li>";
-            }
-
+            topicsHTML += renderTopics(data.topics);
             topicsHTML += "</ul>";
             responseDiv.innerHTML = topicsHTML;
           } else {
-            responseDiv.innerHTML =
-              "Failed to upload the PDF or generate topics.";
+            // If the upload fails, don't show the "Uploading..." message
+            responseDiv.innerHTML = ""; // Clear the message
+            const toastElement = document.getElementById("uploadToast");
+            const toast = new bootstrap.Toast(toastElement);
+            toast.show();
           }
         } catch (error) {
-          responseDiv.innerHTML = `Error: ${error.message}`;
+          // If there is an error, also clear the "Uploading..." message
+          responseDiv.innerHTML = ""; // Clear the message
+          const toastElement = document.getElementById("uploadToast");
+          const toast = new bootstrap.Toast(toastElement);
+          toast.show();
         }
       };
     </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>
