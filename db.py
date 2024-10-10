@@ -22,7 +22,7 @@ def get_db_connection():
         conn = psycopg2.connect(
             database="myapp_db",
             user="myapp_user",
-            password="your_password",
+            password="password",
             host="localhost",
             port="5432",
         )
