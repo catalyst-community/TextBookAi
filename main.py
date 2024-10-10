@@ -72,7 +72,7 @@ async def signup(
     hashed_password = hash_password(password)
     try:
         cur.execute(
-            "INSERT INTO authentication (emailID, username, password) VALUES (%s, %s, %s)",
+            "INSERT INTO authentication (email, username, password) VALUES (%s, %s, %s)",
             (email, username, hashed_password),
         )
         conn.commit()
@@ -103,7 +103,7 @@ async def login(
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     try:
-        cur.execute("SELECT * FROM authentication WHERE emailID = %s", (email,))
+        cur.execute("SELECT * FROM authentication WHERE email = %s", (email,))
         user = cur.fetchone()
     finally:
         cur.close()
@@ -113,7 +113,7 @@ async def login(
         return HTMLResponse(status_code=400, content="Invalid email or password")
 
     # Store user information in session
-    request.session["emailid"] = user["emailid"]
+    request.session["email"] = user["email"]
     request.session["username"] = user["username"]
 
     return RedirectResponse(url="/", status_code=302)
@@ -141,9 +141,9 @@ def logout(request: Request):
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     username = request.session.get("username")
-    emailid = request.session.get("emailid")  # Fetch the email ID from the session
+    email = request.session.get("email")  # Fetch the email ID from the session
     return templates.TemplateResponse(
-        "index.html", {"request": request, "username": username, "emailid": emailid}
+        "index.html", {"request": request, "username": username, "email": email}
     )
 
 
