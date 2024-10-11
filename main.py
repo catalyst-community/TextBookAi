@@ -6,17 +6,16 @@ from fastapi import (
     UploadFile,
     File,
     Query,
-    Depends,
-    Cookie,
 )
 from starlette.requests import Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from pathlib import Path
 import os
+from db import hash_password, verify_password
 from pdf import upload_to_gemini, generate_topics
 from passlib.context import CryptContext
 import logging
@@ -37,21 +36,11 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # Mock database connection function
 def get_db_connection():
     return psycopg2.connect(
-        database="myapp_db",
-        user="myapp_user",
-        password="password",
-        host="localhost",
+        database="postgres",
+        user="postgres.xdvwtpqclkedpktjsrzc",
+        password="aOoDlcdghQ39Gkjr",
+        host="aws-0-us-east-1.pooler.supabase.com",
     )
-
-
-# Hash the password
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
-
-
-# Verify password
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
 
 
 # Sign-up route
@@ -72,7 +61,7 @@ async def signup(
     hashed_password = hash_password(password)
     try:
         cur.execute(
-            "INSERT INTO authentication (emailID, username, password) VALUES (%s, %s, %s)",
+            "INSERT INTO authentication (email, username, password) VALUES (%s, %s, %s)",
             (email, username, hashed_password),
         )
         conn.commit()
@@ -95,13 +84,18 @@ async def get_login(request: Request):
 @app.post("/login")
 async def login(
     request: Request,
-    email: str = Form(...),
+    login: str = Form(...),
     password: str = Form(...),
 ):
+    # Assuming successful authentication
+
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     try:
-        cur.execute("SELECT * FROM authentication WHERE emailID = %s", (email,))
+        cur.execute(
+            "SELECT * FROM authentication WHERE email = %s or username = %s",
+            (login, login),
+        )
         user = cur.fetchone()
     finally:
         cur.close()
@@ -111,7 +105,7 @@ async def login(
         return HTMLResponse(status_code=400, content="Invalid email or password")
 
     # Store user information in session
-    request.session["emailid"] = user["emailid"]
+    request.session["email"] = user["email"]
     request.session["username"] = user["username"]
 
     return RedirectResponse(url="/", status_code=302)
@@ -139,15 +133,22 @@ def logout(request: Request):
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     username = request.session.get("username")
-    emailid = request.session.get("emailid")  # Fetch the email ID from the session
+    email = request.session.get("email")  # Fetch the email ID from the session
     return templates.TemplateResponse(
-        "index.html", {"request": request, "username": username, "emailid": emailid}
+        "index.html", {"request": request, "username": username, "email": email}
     )
 
 
 # Route to upload PDF and generate topics
 @app.post("/upload_pdf/")
-async def upload_pdf(file: UploadFile = File(...)):
+async def upload_pdf(request: Request, file: UploadFile = File(...)):
+    username = request.session.get("username")  # Check if user is logged in
+    if not username:
+        return JSONResponse(
+            content={"error": "You need to be logged in to upload a file."},
+            status_code=401,
+        )
+
     temp_dir = Path("./temp_files")
     temp_dir.mkdir(exist_ok=True)
 
