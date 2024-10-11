@@ -3,10 +3,8 @@ import os
 from pathlib import Path
 import re
 from typing import Dict, Optional, List
-from dataclasses import dataclass
 import google.generativeai as genai
 from google.generativeai.types.file_types import File
-import gradio as gr
 from dotenv import load_dotenv
 
 load_dotenv()

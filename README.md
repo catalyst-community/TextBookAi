@@ -25,7 +25,7 @@ poetry shell
 Create a `.env` file in the project root and add your API key:
 
 ```plaintext
-GEMINI_API_KEY='AIzaS...............'
+GEMINI_API_KEY=AIzaS...............
 ```
 
 ### 4. Run the Application
@@ -34,6 +34,20 @@ Start the application using Uvicorn with live reload:
 
 ```bash
 uvicorn main:app --reload
+```
+
+## Docker
+
+Build the Docker image:
+
+```bash
+docker build -t vidy-ai .
+```
+
+Run the Docker container:
+
+```bash
+docker run --env-file .env -p 8000:8000 vidy-ai
 ```
 
 Now you’re ready to use TextBookAi!
