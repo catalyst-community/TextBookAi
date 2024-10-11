@@ -14,18 +14,6 @@ load_dotenv()
 # Configure the API key for Google Gemini
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
-
-@dataclass
-class Topic:
-    topic: str
-    sub_topics: List[str]
-
-
-@dataclass
-class TopicOutput:
-    topics: List[Topic]
-
-
 # Initialize the model once to avoid recreating it
 # we will put this in class init function later on
 model = genai.GenerativeModel(model_name="gemini-1.5-flash")

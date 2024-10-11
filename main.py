@@ -3,10 +3,8 @@ from fastapi import (
     FastAPI,
     Request,
     Form,
-    HTTPException,
     UploadFile,
     File,
-    Query,
 )
 from starlette.requests import Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -20,9 +18,19 @@ import shutil
 from pdf import upload_to_gemini, generate_topics
 from passlib.context import CryptContext
 import logging
+from db import hash_password, verify_password
+from fastapi.templating import Jinja2Templates
+from pdf import generate_notes
+from dotenv import load_dotenv
+from fastapi.staticfiles import StaticFiles
+
+load_dotenv()
+
+
 # Set up FastAPI
 app = FastAPI()
-
+# Mount the static directory
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Add session middleware (from starlette)
 app.add_middleware(SessionMiddleware, secret_key="your_secret_key_here")
@@ -37,10 +45,10 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # Mock database connection function
 def get_db_connection():
     return psycopg2.connect(
-        database="postgres",
-        user="postgres.xdvwtpqclkedpktjsrzc",
-        password="aOoDlcdghQ39Gkjr",
-        host="aws-0-us-east-1.pooler.supabase.com",
+        database=os.getenv("SUPABASE_DATABASE"),
+        user=os.getenv("SUPABASE_USER"),
+        password=os.getenv("SUPABASE_PASSWORD"),
+        host=os.getenv("SUPABASE_HOST"),
     )
 
 
@@ -142,16 +150,15 @@ async def home(request: Request):
 
 @app.post("/upload_pdf/")
 async def upload_pdf(request: Request, file: UploadFile = File(...)):
-
     """Handle PDF upload and store file reference in session."""
-    
+
     username = request.session.get("username")  # Check if user is logged in
     if not username:
         return JSONResponse(
             content={"error": "You need to be logged in to upload a file."},
             status_code=401,
         )
-      
+
     # Validate file type
     if file.content_type != "application/pdf":
         return {"error": "Invalid file type. Please upload a PDF file."}
@@ -215,4 +222,3 @@ async def get_subtopic_notes(topic: str, subtopic: str, request: Request):
     </html>
     """
     return HTMLResponse(content=html_content)
-
