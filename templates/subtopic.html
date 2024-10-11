@@ -3,41 +3,85 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Subtopic Details</title>
+    <title>Subtopic Notes</title>
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
     />
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+      body {
+        background-color: #f8f9fa;
+      }
+      .custom-container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      .notes-container {
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        margin-top: 20px;
+      }
+      .notes-container h1 {
+        color: #007bff;
+        margin-bottom: 20px;
+      }
+      .notes-content {
+        font-size: 16px;
+        line-height: 1.6;
+      }
+      .notes-content h2,
+      .notes-content h3 {
+        color: #0056b3;
+        margin-top: 20px;
+        margin-bottom: 10px;
+      }
+      .notes-content ul,
+      .notes-content ol {
+        padding-left: 20px;
+      }
+      .notes-content code {
+        background-color: #f1f3f5;
+        padding: 2px 4px;
+        border-radius: 4px;
+      }
+      .notes-content pre {
+        background-color: #f1f3f5;
+        padding: 10px;
+        border-radius: 4px;
+        overflow-x: auto;
+      }
+    </style>
   </head>
   <body>
-    <div class="container mt-5">
-      <h1 class="text-center">Subtopic Details</h1>
-      <div id="subtopic-details" class="mt-4"></div>
+    <div class="container custom-container mt-5">
+      <div class="notes-container">
+        <h1>Loading notes...</h1>
+        <div id="notes" class="notes-content"></div>
+      </div>
     </div>
 
     <script>
-      // Function to get query parameters from the URL
-      function getQueryParams() {
-        const params = new URLSearchParams(window.location.search);
-        const topic = params.get("topic");
-        const subtopic = params.get("subtopic");
-        return { topic, subtopic };
+      const urlParams = new URLSearchParams(window.location.search);
+      const topic = urlParams.get("topic");
+      const subtopic = urlParams.get("subtopic");
+
+      document.querySelector("h1").innerText = `Notes for ${subtopic}`;
+
+      async function loadNotes() {
+        const response = await fetch(
+          `/subtopic/?topic=${encodeURIComponent(
+            topic
+          )}&subtopic=${encodeURIComponent(subtopic)}`
+        );
+        const markdownNotes = await response.text();
+        const htmlNotes = marked.parse(markdownNotes);
+        document.getElementById("notes").innerHTML = htmlNotes;
       }
 
-      document.addEventListener("DOMContentLoaded", function () {
-        const { topic, subtopic } = getQueryParams();
-
-        // Display the topic and subtopic on the page
-        const detailsDiv = document.getElementById("subtopic-details");
-        if (topic && subtopic) {
-          detailsDiv.innerHTML = `
-            <h3>Topic: ${decodeURIComponent(topic)}</h3>
-            <h4>Subtopic: ${decodeURIComponent(subtopic)}</h4>
-          `;
-        } else {
-          detailsDiv.innerHTML = "<p>No subtopic information provided.</p>";
-        }
-      });
+      loadNotes();
     </script>
   </body>
 </html>

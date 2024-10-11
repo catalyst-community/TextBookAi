@@ -401,7 +401,6 @@ typing-extensions = ">=4.1.1,<5.0.0"
 asymmetric = ["cryptography (>=39.0.1,<44.0.0)"]
 
 [[package]]
-name = "fastapi-session"
 version = "0.2.7"
 description = ""
 optional = false
@@ -2656,4 +2655,5 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
+content-hash = "e35017a3188e0dfe24376fd13aca95a5509de00b4d02fa0604a42578d77a6916"
 content-hash = "485214118cc697e1a8feb2e7a6b6ea9b6fa0f6c94254e7da8c4e6e4d67890a3f"

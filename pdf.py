@@ -14,18 +14,6 @@ load_dotenv()
 # Configure the API key for Google Gemini
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
-
-@dataclass
-class Topic:
-    topic: str
-    sub_topics: List[str]
-
-
-@dataclass
-class TopicOutput:
-    topics: List[Topic]
-
-
 # Initialize the model once to avoid recreating it
 # we will put this in class init function later on
 model = genai.GenerativeModel(model_name="gemini-1.5-flash")
@@ -34,7 +22,7 @@ model = genai.GenerativeModel(model_name="gemini-1.5-flash")
 def upload_to_gemini(path: Path, mime_type: Optional[str] = None) -> File:
     """Upload file to Gemini."""
     file = genai.upload_file(path, mime_type=mime_type)
-    print(f"Uploaded file '{file.display_name}' as: {file.uri}")
+    print(f"Uploaded file '{file.display_name}' as: {file}")
     return file
 
 
@@ -48,6 +36,9 @@ def generate_topics(file: File) -> List[Dict]:
         "max_output_tokens": 8192,
         "response_mime_type": "text/plain",
     }
+
+    print("-------------------------------------------")
+    print("file:", file)
 
     model = genai.GenerativeModel(
         model_name="gemini-1.5-flash",
@@ -100,7 +91,7 @@ def generate_topics(file: File) -> List[Dict]:
                            """,
         generation_config=generation_config,  # type: ignore
     )
-    
+
     response = model.generate_content(
         [file, "Give me topics and subtopics from this book."]
     ).text
@@ -122,47 +113,14 @@ def generate_topics(file: File) -> List[Dict]:
         return []
 
 
-def generate_notes(topics: TopicOutput, file: File) -> str:
+def generate_notes(topics: str, sub_topic: str, file_path: Path) -> str:
     """Generate notes for each topic and subtopic."""
-    notes = ""
-    for topic in topics.topics:
-        for sub_topic in topic.sub_topics:
-            response = model.generate_content(
-                [
-                    file,
-                    f"Write short notes on the subtopic '{sub_topic}' under the topic '{topic.topic}'.",
-                ]
-            ).text
-            notes += f"**Topic:** {topic.topic}\n**Subtopic:** {sub_topic}\n**Notes:**\n{response}\n\n"
-    print(notes)
-    return notes
-
-
-# Gradio interface
-def gradio_interface(pdf_file):
-    """Handle the Gradio interface for PDF summarization."""
-    if pdf_file is not None:
-        # Upload and process the PDF
-        file = upload_to_gemini(pdf_file, mime_type="application/pdf")
-        topics = generate_topics(file)
-        if isinstance(topics, TopicOutput):  # Ensure we got a valid TopicOutput
-            notes = generate_notes(topics, file)
-            return notes
-        else:
-            return topics  # Return error message from generate_topics
-    else:
-        return "Please upload a PDF file."
-
-
-# Gradio UI
-ui = gr.Interface(
-    fn=gradio_interface,
-    inputs=gr.File(file_types=[".pdf"], label="Upload your PDF book"),
-    outputs="text",
-    title="Gemini Book Summarizer",
-    description="Upload a textbook in PDF format to summarize the topics and subtopics.",
-)
-
-if __name__ == "__main__":
-    # Launch the Gradio interface
-    ui.launch(share=True, debug=True)
+    file = upload_to_gemini(file_path)
+    response = model.generate_content(
+        [
+            file,
+            f"Write short notes on the subtopic '{sub_topic}' under the topic '{topics}'.",
+        ]
+    ).text
+    print(response)
+    return response

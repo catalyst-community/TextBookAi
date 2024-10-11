@@ -1,27 +1,36 @@
+from fastapi.responses import HTMLResponse
 from fastapi import (
     FastAPI,
     Request,
     Form,
-    HTTPException,
     UploadFile,
     File,
-    Query,
 )
 from starlette.requests import Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from pathlib import Path
 import os
-from db import hash_password, verify_password
+from starlette.middleware.sessions import SessionMiddleware
+import shutil
 from pdf import upload_to_gemini, generate_topics
 from passlib.context import CryptContext
 import logging
+from db import hash_password, verify_password
+from fastapi.templating import Jinja2Templates
+from pdf import generate_notes
+from dotenv import load_dotenv
+from fastapi.staticfiles import StaticFiles
+
+load_dotenv()
+
 
 # Set up FastAPI
 app = FastAPI()
+# Mount the static directory
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Add session middleware (from starlette)
 app.add_middleware(SessionMiddleware, secret_key="your_secret_key_here")
@@ -36,10 +45,10 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # Mock database connection function
 def get_db_connection():
     return psycopg2.connect(
-        database="postgres",
-        user="postgres.xdvwtpqclkedpktjsrzc",
-        password="aOoDlcdghQ39Gkjr",
-        host="aws-0-us-east-1.pooler.supabase.com",
+        database=os.getenv("SUPABASE_DATABASE"),
+        user=os.getenv("SUPABASE_USER"),
+        password=os.getenv("SUPABASE_PASSWORD"),
+        host=os.getenv("SUPABASE_HOST"),
     )
 
 
@@ -139,9 +148,10 @@ async def home(request: Request):
     )
 
 
-# Route to upload PDF and generate topics
 @app.post("/upload_pdf/")
 async def upload_pdf(request: Request, file: UploadFile = File(...)):
+    """Handle PDF upload and store file reference in session."""
+
     username = request.session.get("username")  # Check if user is logged in
     if not username:
         return JSONResponse(
@@ -149,40 +159,66 @@ async def upload_pdf(request: Request, file: UploadFile = File(...)):
             status_code=401,
         )
 
-    temp_dir = Path("./temp_files")
-    temp_dir.mkdir(exist_ok=True)
+    # Validate file type
+    if file.content_type != "application/pdf":
+        return {"error": "Invalid file type. Please upload a PDF file."}
 
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No file uploaded")
+    # Ensure the upload folder exists
+    upload_folder = Path("uploads")
+    upload_folder.mkdir(exist_ok=True)
 
-    if not file.filename.endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
+    # Save the file locally (sanitize file name)
+    file_path = upload_folder / os.path.basename(str(file.filename))
+    with file_path.open("wb") as f:
+        shutil.copyfileobj(file.file, f)  # Save the file content
 
-    file_location = temp_dir / file.filename
-    with open(file_location, "wb") as f:
-        f.write(await file.read())
+    # Upload the file to Gemini and store its URI in the session
+    uploaded_file = upload_to_gemini(file_path)
 
-    try:
-        uploaded_file = upload_to_gemini(file_location, mime_type="application/pdf")
-        topics = generate_topics(uploaded_file)
-        return {"topics": topics}
-    finally:
-        os.remove(file_location)  # Clean up the uploaded file
+    # Store only the file name in the session
+    request.session["uploaded_file_name"] = file_path.name
 
+    # Generate topics after file upload
+    topics = generate_topics(uploaded_file)
 
-# Subtopic route
-@app.get("/subtopic", response_class=HTMLResponse)
-async def subtopic(
-    request: Request,
-    topic: str = Query(...),
-    subtopic: str = Query(...),
-):
-    return templates.TemplateResponse(
-        "subtopic.html", {"request": request, "topic": topic, "subtopic": subtopic}
-    )
+    return {"message": "File uploaded", "file_name": file_path.name, "topics": topics}
 
 
-if __name__ == "__main__":
-    import uvicorn
+@app.get("/subtopic/")
+async def get_subtopic_notes(topic: str, subtopic: str, request: Request):
+    """Retrieve the file from storage and generate notes for the subtopic."""
+    file_name = request.session.get("uploaded_file_name")
+    if not file_name:
+        return HTMLResponse(
+            content="No file found in session. Please upload a PDF.", status_code=400
+        )
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Retrieve the file from storage
+    file_path = Path("uploads") / file_name
+    if not file_path.exists():
+        return HTMLResponse(
+            content="File not found in storage. Please upload the PDF again.",
+            status_code=400,
+        )
+
+    # Generate notes
+    response = generate_notes(topic, subtopic, file_path)
+
+    # Return formatted HTML
+    html_content = f"""
+    <html>
+    <head>
+        <title>{subtopic} Notes</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+    </head>
+    <body>
+        <div class="container mt-5">
+            <h1>Notes for {subtopic}</h1>
+            <p><strong>Topic:</strong> {topic}</p>
+            <p><strong>Subtopic:</strong> {subtopic}</p>
+            <div class="notes">{response}</div>
+        </div>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
