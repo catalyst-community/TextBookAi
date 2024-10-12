@@ -23,6 +23,7 @@ from fastapi.templating import Jinja2Templates
 from pdf import generate_notes
 from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import PlainTextResponse
 
 load_dotenv()
 
@@ -161,7 +162,10 @@ async def upload_pdf(request: Request, file: UploadFile = File(...)):
 
     # Validate file type
     if file.content_type != "application/pdf":
-        return {"error": "Invalid file type. Please upload a PDF file."}
+        return JSONResponse(
+            content={"error": "Invalid file type. Please upload a PDF file."},
+            status_code=400,
+        )
 
     # Ensure the upload folder exists
     upload_folder = Path("uploads")
@@ -185,40 +189,38 @@ async def upload_pdf(request: Request, file: UploadFile = File(...)):
 
 
 @app.get("/subtopic/")
-async def get_subtopic_notes(topic: str, subtopic: str, request: Request):
-    """Retrieve the file from storage and generate notes for the subtopic."""
+async def get_subtopic_notes(request: Request, chapter: str, topic: str, subtopic: str):
+    """Generate notes for the subtopic and render the subtopic.html template."""
     file_name = request.session.get("uploaded_file_name")
     if not file_name:
         return HTMLResponse(
-            content="No file found in session. Please upload a PDF.", status_code=400
+            "No file found in session. Please upload a PDF.", status_code=400
         )
 
     # Retrieve the file from storage
     file_path = Path("uploads") / file_name
     if not file_path.exists():
         return HTMLResponse(
-            content="File not found in storage. Please upload the PDF again.",
-            status_code=400,
+            "File not found in storage. Please upload the PDF again.", status_code=400
         )
 
     # Generate notes
-    response = generate_notes(topic, subtopic, file_path)
+    try:
+        notes = generate_notes(chapter, topic, subtopic, file_path)
+        if not notes.strip():
+            notes = "No notes generated for this subtopic."
+    except Exception as e:
+        logging.error(f"Error generating notes: {str(e)}")
+        notes = f"Error generating notes: {str(e)}"
 
-    # Return formatted HTML
-    html_content = f"""
-    <html>
-    <head>
-        <title>{subtopic} Notes</title>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
-    </head>
-    <body>
-        <div class="container mt-5">
-            <h1>Notes for {subtopic}</h1>
-            <p><strong>Topic:</strong> {topic}</p>
-            <p><strong>Subtopic:</strong> {subtopic}</p>
-            <div class="notes">{response}</div>
-        </div>
-    </body>
-    </html>
-    """
-    return HTMLResponse(content=html_content)
+    # Render the template with the generated notes
+    return templates.TemplateResponse(
+        "subtopic.html",
+        {
+            "request": request,
+            "chapter": chapter,
+            "topic": topic,
+            "subtopic": subtopic,
+            "notes": notes,
+        },
+    )
