@@ -23,7 +23,6 @@ from fastapi.templating import Jinja2Templates
 from pdf import generate_notes
 from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import PlainTextResponse
 
 load_dotenv()
 
@@ -45,6 +44,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Mock database connection function
 def get_db_connection():
+    """Establish and return a connection to the database."""
     return psycopg2.connect(
         database=os.getenv("SUPABASE_DATABASE"),
         user=os.getenv("SUPABASE_USER"),
@@ -56,6 +56,7 @@ def get_db_connection():
 # Sign-up route
 @app.get("/signup", response_class=HTMLResponse)
 async def get_signup(request: Request):
+    """Render the signup page."""
     return templates.TemplateResponse("signup.html", {"request": request})
 
 
@@ -66,16 +67,19 @@ async def signup(
     username: str = Form(...),
     password: str = Form(...),
 ):
+    """Handle user signup process."""
     conn = get_db_connection()
     cur = conn.cursor()
     hashed_password = hash_password(password)
     try:
+        # Insert new user into the database
         cur.execute(
             "INSERT INTO authentication (email, username, password) VALUES (%s, %s, %s)",
             (email, username, hashed_password),
         )
         conn.commit()
     except psycopg2.errors.UniqueViolation:
+        # Handle case where email or username already exists
         conn.rollback()
         return HTMLResponse(status_code=400, content="Email or Username already exists")
     finally:
@@ -88,6 +92,7 @@ async def signup(
 # Login route
 @app.get("/login", response_class=HTMLResponse)
 async def get_login(request: Request):
+    """Render the login page."""
     return templates.TemplateResponse("login.html", {"request": request})
 
 
@@ -97,11 +102,11 @@ async def login(
     login: str = Form(...),
     password: str = Form(...),
 ):
-    # Assuming successful authentication
-
+    """Handle user login process."""
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     try:
+        # Fetch user from database
         cur.execute(
             "SELECT * FROM authentication WHERE email = %s or username = %s",
             (login, login),
@@ -111,6 +116,7 @@ async def login(
         cur.close()
         conn.close()
 
+    # Verify user credentials
     if not user or not verify_password(password, user["password"]):
         return HTMLResponse(status_code=400, content="Invalid email or password")
 
@@ -127,14 +133,15 @@ logging.basicConfig(level=logging.INFO)
 
 @app.get("/logout")
 def logout(request: Request):
-    username = request.session.get("username")  # Get the username from the session
+    """Handle user logout process."""
+    username = request.session.get("username")
     logging.info(f"Logging out user: {username}")
 
     # Clear the session
-    request.session.clear()  # Clear all session data
+    request.session.clear()
 
     # Redirect to home page
-    response = RedirectResponse(url="/")  # Redirect to home page
+    response = RedirectResponse(url="/")
     logging.info("Session cleared. Redirecting to home page.")
     return response
 
@@ -142,8 +149,9 @@ def logout(request: Request):
 # Home route
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
+    """Render the home page."""
     username = request.session.get("username")
-    email = request.session.get("email")  # Fetch the email ID from the session
+    email = request.session.get("email")
     return templates.TemplateResponse(
         "index.html", {"request": request, "username": username, "email": email}
     )
@@ -152,8 +160,7 @@ async def home(request: Request):
 @app.post("/upload_pdf/")
 async def upload_pdf(request: Request, file: UploadFile = File(...)):
     """Handle PDF upload and store file reference in session."""
-
-    username = request.session.get("username")  # Check if user is logged in
+    username = request.session.get("username")
     if not username:
         return JSONResponse(
             content={"error": "You need to be logged in to upload a file."},
@@ -171,10 +178,10 @@ async def upload_pdf(request: Request, file: UploadFile = File(...)):
     upload_folder = Path("uploads")
     upload_folder.mkdir(exist_ok=True)
 
-    # Save the file locally (sanitize file name)
+    # Save the file locally
     file_path = upload_folder / os.path.basename(str(file.filename))
     with file_path.open("wb") as f:
-        shutil.copyfileobj(file.file, f)  # Save the file content
+        shutil.copyfileobj(file.file, f)
 
     # Upload the file to Gemini and store its URI in the session
     uploaded_file = upload_to_gemini(file_path)
@@ -188,9 +195,9 @@ async def upload_pdf(request: Request, file: UploadFile = File(...)):
     return {"message": "File uploaded", "file_name": file_path.name, "topics": topics}
 
 
-@app.get("/subtopic/")
-async def get_subtopic_notes(request: Request, chapter: str, topic: str, subtopic: str):
-    """Generate notes for the subtopic and render the subtopic.html template."""
+@app.get("/notes/")
+async def get_notes(request: Request, chapter: str, topic: str, subtopic: str):
+    """Generate notes for the subtopic and render the notes.html template."""
     file_name = request.session.get("uploaded_file_name")
     if not file_name:
         return HTMLResponse(
@@ -215,7 +222,7 @@ async def get_subtopic_notes(request: Request, chapter: str, topic: str, subtopi
 
     # Render the template with the generated notes
     return templates.TemplateResponse(
-        "subtopic.html",
+        "notes.html",
         {
             "request": request,
             "chapter": chapter,
