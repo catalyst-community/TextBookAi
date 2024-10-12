@@ -137,61 +137,55 @@
 
           if (response.ok) {
             const data = await response.json();
-            let topicsHTML =
-              '<div class="topics-container"><h2>Generated Topics:</h2><ul>';
+            if (data.error) {
+              // If there's an error in the JSON response, display it
+              responseDiv.innerHTML = data.error;
+              const toastElement = document.getElementById("uploadToast");
+              const toast = new bootstrap.Toast(toastElement);
+              toast.show();
+            } else {
+              let chaptersHTML =
+                '<div class="topics-container"><h2>Book Structure:</h2>';
 
-            function renderTopics(topicList) {
-              return topicList
-                .map((topicObj) => {
-                  let topicHTML = `<li><strong>${topicObj.topic}</strong>`;
-                  if (
-                    Array.isArray(topicObj.sub_topics) &&
-                    topicObj.sub_topics.length > 0
-                  ) {
-                    topicHTML += "<ul>";
-                    topicObj.sub_topics.forEach((subTopic) => {
-                      if (typeof subTopic === "string") {
-                        topicHTML += `<li><a href="/subtopic?topic=${encodeURIComponent(
-                          topicObj.topic
+              function renderChapters(chapters) {
+                return chapters
+                  .map((chapter) => {
+                    let chapterHTML = `<h3>${chapter.chapter}</h3><ul>`;
+                    chapter.topics.forEach((topic) => {
+                      chapterHTML += `<li><strong>${topic.topic}</strong><ul>`;
+                      topic.sub_topics.forEach((subTopic) => {
+                        chapterHTML += `<li><a href="/subtopic?chapter=${encodeURIComponent(
+                          chapter.chapter
+                        )}&topic=${encodeURIComponent(
+                          topic.topic
                         )}&subtopic=${encodeURIComponent(
                           subTopic
                         )}" target="_blank">${subTopic}</a></li>`;
-                      } else if (
-                        typeof subTopic === "object" &&
-                        subTopic.name
-                      ) {
-                        topicHTML += `<li><strong>${subTopic.name}</strong><ul>`;
-                        subTopic.sub_sub_topics.forEach((subSubTopic) => {
-                          topicHTML += `<li><a href="/subtopic?topic=${encodeURIComponent(
-                            topicObj.topic
-                          )}&subtopic=${encodeURIComponent(
-                            subSubTopic
-                          )}" target="_blank">${subSubTopic}</a></li>`;
-                        });
-                        topicHTML += "</ul></li>";
-                      }
+                      });
+                      chapterHTML += "</ul></li>";
                     });
-                    topicHTML += "</ul>";
-                  }
-                  topicHTML += "</li>";
-                  return topicHTML;
-                })
-                .join("");
-            }
+                    chapterHTML += "</ul>";
+                    return chapterHTML;
+                  })
+                  .join("");
+              }
 
-            topicsHTML += renderTopics(data.topics);
-            topicsHTML += "</ul></div>";
-            responseDiv.innerHTML = topicsHTML;
+              chaptersHTML += renderChapters(data.topics);
+              chaptersHTML += "</div>";
+              responseDiv.innerHTML = chaptersHTML;
+            }
           } else {
-            // If the upload fails, don't show the "Uploading..." message
-            responseDiv.innerHTML = ""; // Clear the message
+            // If the response is not ok, display the error message
+            const errorData = await response.json();
+            responseDiv.innerHTML =
+              errorData.error || "An error occurred during upload.";
             const toastElement = document.getElementById("uploadToast");
             const toast = new bootstrap.Toast(toastElement);
             toast.show();
           }
         } catch (error) {
-          // If there is an error, also clear the "Uploading..." message
-          responseDiv.innerHTML = ""; // Clear the message
+          // If there is an error, display a generic error message
+          responseDiv.innerHTML = "An error occurred during upload.";
           const toastElement = document.getElementById("uploadToast");
           const toast = new bootstrap.Toast(toastElement);
           toast.show();
