@@ -15,7 +15,7 @@ from pathlib import Path
 import os
 from starlette.middleware.sessions import SessionMiddleware
 import shutil
-from pdf import upload_to_gemini, generate_topics
+from pdf import upload_to_gemini, generate_topics, generate_topic_notes
 from passlib.context import CryptContext
 import logging
 from db import hash_password, verify_password
@@ -23,6 +23,7 @@ from fastapi.templating import Jinja2Templates
 from pdf import generate_notes
 from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
+import html
 
 load_dotenv()
 
@@ -195,6 +196,45 @@ async def upload_pdf(request: Request, file: UploadFile = File(...)):
     return {"message": "File uploaded", "file_name": file_path.name, "topics": topics}
 
 
+@app.get("/topic_notes/")
+async def get_topic_notes(request: Request, chapter: str, topic: str):
+    """Generate notes for the topic and render the topic_notes.html template."""
+    file_name = request.session.get("uploaded_file_name")
+    if not file_name:
+        return HTMLResponse(
+            "No file found in session. Please upload a PDF.", status_code=400
+        )
+
+    # Retrieve the file from storage
+    file_path = Path("uploads") / file_name
+    if not file_path.exists():
+        return HTMLResponse(
+            "File not found in storage. Please upload the PDF again.", status_code=400
+        )
+
+    # Generate topic notes
+    try:
+        file = upload_to_gemini(file_path)
+        topic_notes = generate_topic_notes(file, chapter, topic)
+        if not topic_notes.strip():
+            topic_notes = "No notes generated for this topic."
+    except Exception as e:
+        logging.error(f"Error generating topic notes: {str(e)}")
+        topic_notes = f"Error generating topic notes: {str(e)}"
+
+    # Render the template with the generated notes
+    return templates.TemplateResponse(
+        "topic_notes.html",
+        {
+            "request": request,
+            "chapter": chapter,
+            "topic": topic,
+            "topic_notes": topic_notes,
+            "has_subtopics": False,
+        },
+    )
+
+
 @app.get("/notes/")
 async def get_notes(request: Request, chapter: str, topic: str, subtopic: str):
     """Generate notes for the subtopic and render the notes.html template."""
@@ -231,3 +271,12 @@ async def get_notes(request: Request, chapter: str, topic: str, subtopic: str):
             "notes": notes,
         },
     )
+
+
+# Add this function to escape the markdown
+def escape_markdown(text):
+    return html.escape(text)
+
+
+# Add the custom filter to Jinja2
+templates.env.filters["escape_markdown"] = escape_markdown
