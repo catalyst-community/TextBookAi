@@ -28,34 +28,37 @@ def generate_topics(file: File) -> List[Dict]:
     """Generate chapters, topics, and subtopics from the book."""
 
     generation_config = {
-        "temperature": 0.5,
+        "temperature": 0.3,  # Reduced for more focused outputs
         "top_p": 0.95,
-        "top_k": 64,
+        "top_k": 40,  # Reduced for more precise selection
         "max_output_tokens": 8192,
         "response_mime_type": "text/plain",
     }
-
-    print("-------------------------------------------")
-    print("file:", file)
 
     model = genai.GenerativeModel(
         model_name="gemini-1.5-flash",
         system_instruction="""
         You are an expert text analyst specializing in content organization and summarization. Your task is to analyze book content and create a structured outline of chapters, topics, and subtopics. 
-        Follow these guidelines:
-        1. Carefully read and comprehend the provided book text.
-        2. Identify chapters, then main topics within each chapter, and their corresponding subtopics.
+        Follow these guidelines meticulously:
+
+        1. Thoroughly read and comprehend the provided book text.
+        2. Identify chapters, main topics within each chapter, and their corresponding subtopics.
         3. Ensure chapters and topics are distinct, comprehensive, and accurately represent the book's content.
         4. Create clear, concise subtopics that logically fit under each main topic.
         5. Maintain consistency in the level of detail across chapters, topics, and subtopics.
-        6. Ensure that the subtopics are not too broad or too narrow. And also every topic need not to have a subtopic.
-        7. Cross-check your analysis to ensure accuracy and completeness. Do not make up topics and subtopics.
-        8. Organize the information in the following JSON format:
+        6. Ensure that subtopics are neither too broad nor too narrow. Not every topic needs subtopics.
+        7. Cross-check your analysis to ensure accuracy and completeness. Do not invent or extrapolate topics and subtopics.
+        8. Use the exact wording from the book for chapter titles, topics, and subtopics whenever possible.
+        9. If the book lacks a clear chapter structure, create logical divisions based on content shifts or major themes.
+        10. If a topic or subtopic seems too general, consider breaking it down further.
+        11. Ensure that the hierarchy (chapter > topic > subtopic) is logically consistent throughout the outline.
+        12. Double-check that all content from the book is represented in the outline without omissions.
+        13. Organize the information in the following JSON format:
         
         ```json
         [
         {
-            "chapter": "Chapter 1: Chapter Title",
+            "chapter": "Chapter 1: Exact Chapter Title",
             "topics": [
                 {
                     "topic": "Main Topic 1",
@@ -75,7 +78,7 @@ def generate_topics(file: File) -> List[Dict]:
             ]
         },
         {
-            "chapter": "Chapter 2: Chapter Title",
+            "chapter": "Chapter 2: Exact Chapter Title",
             "topics": [
                 // ... similar structure as Chapter 1
             ]
@@ -83,7 +86,7 @@ def generate_topics(file: File) -> List[Dict]:
         ]
         ```
         
-        ... (rest of the instructions) ...
+        Adhere strictly to this format and guidelines to produce a high-quality, accurate outline of the book's content.
         """,
         generation_config=generation_config,  # type: ignore
     )
@@ -131,3 +134,61 @@ def generate_topic_notes(file, chapter, topic):
         ]
     ).text
     return topic_notes
+
+
+def generate_quiz(file: File, chapter: str) -> List[Dict]:
+    """Generate quiz questions for a specific chapter."""
+    print(f"Generating quiz for chapter: {chapter}")
+    response = model.generate_content(
+        [
+            file,
+            f"""Generate 5 multiple-choice quiz questions for the chapter \'{chapter}\'. 
+            Each question should have 4 options with one correct answer. 
+            Format the response as a JSON array of objects, where each object represents a question with the following structure: 
+            
+            ```json
+            [
+                {{"question": "...", "options": ["A. ...", "B. ...", "C. ...", "D. ..."], "correct_answer": "A"}},
+                {{"question": "...", "options": ["A. ...", "B. ...", "C. ...", "D. ..."], "correct_answer": "A"}},
+                {{"question": "...", "options": ["A. ...", "B. ...", "C. ...", "D. ..."], "correct_answer": "A"}},
+                {{"question": "...", "options": ["A. ...", "B. ...", "C. ...", "D. ..."], "correct_answer": "A"}},
+                {{"question": "...", "options": ["A. ...", "B. ...", "C. ...", "D. ..."], "correct_answer": "A"}}
+            ]
+            ```
+            """,
+        ]
+    ).text
+
+    # Extract the JSON data from the response
+    match = re.search(r"```json\n(.*?)\n```", response, re.DOTALL)
+    if match:
+        json_data = match.group(1)
+        try:
+            parsed_data = json.loads(json_data)
+            print(f"Parsed quiz data: {parsed_data}")
+            if not parsed_data:  # If parsed_data is empty, use fallback
+                return fallback_quiz_questions(chapter)
+            return parsed_data
+        except json.JSONDecodeError as e:
+            print(f"Error parsing JSON: {e}")
+            return fallback_quiz_questions(chapter)
+    else:
+        print("No JSON data found in the response")
+        return fallback_quiz_questions(chapter)
+
+
+def fallback_quiz_questions(chapter: str) -> List[Dict]:
+    """Generate fallback quiz questions if the AI model fails."""
+    return [
+        {
+            "question": f"This is a sample question about {chapter}. What is the correct answer?",
+            "options": [
+                "A. Sample answer 1",
+                "B. Sample answer 2",
+                "C. Sample answer 3",
+                "D. Sample answer 4",
+            ],
+            "correct_answer": "A",
+        },
+        # Add more fallback questions here...
+    ]

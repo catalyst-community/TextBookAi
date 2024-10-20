@@ -14,7 +14,30 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/static/css/index.css" />
+    <style>
+      .loader {
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #3498db;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+        display: none;
+        margin: 20px auto;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
   </head>
+
   <body>
     <div class="container custom-container mt-5">
       <header class="d-flex justify-content-between align-items-center mb-4">
@@ -81,11 +104,17 @@
         </div>
       </div>
 
-      <div id="response" class="mt-4"></div>
+      <!-- Add this div for the loader and response after the upload form card -->
+      <div id="chaptersContainer" class="mt-4">
+        <div class="loader" id="loader" style="display: none"></div>
+        <div id="response"></div>
+      </div>
 
       <div class="about-section">
         <details>
-          <summary><h2>About VidyAI</h2></summary>
+          <summary>
+            <h2>About VidyAI</h2>
+          </summary>
           <div class="content">
             <p>Welcome to VidyAI, your intelligent learning companion!</p>
             <p>
@@ -191,7 +220,12 @@
         formData.append("file", fileInput.files[0]);
 
         const responseDiv = document.getElementById("response");
-        responseDiv.innerHTML = "Generating...";
+        const loader = document.getElementById("loader");
+        const chaptersContainer = document.getElementById("chaptersContainer");
+
+        responseDiv.innerHTML = "";
+        loader.style.display = "block"; // Show the loader
+        chaptersContainer.style.display = "block"; // Make sure the container is visible
 
         // Show cancel button, hide generate and regenerate buttons
         document.getElementById("generateBtn").style.display = "none";
@@ -234,6 +268,7 @@
             showToast();
           }
         } finally {
+          loader.style.display = "none"; // Hide the loader
           resetButtons();
         }
       }
@@ -242,15 +277,16 @@
         return chapters
           .map((chapter) => {
             let chapterHTML = `
-            <details class="chapter-details">
+          <details class="chapter-details">
               <summary><h3>${chapter.chapter}</h3></summary>
               <div class="content">
-                <ul>`;
+                  <ul>`;
             chapterHTML += renderTopics(chapter.topics, chapter.chapter);
             chapterHTML += `
-                </ul>
+                  </ul>
+                  <button class="btn btn-primary mt-3" onclick="openQuiz('${chapter.chapter}')">Take Quiz</button>
               </div>
-            </details>`;
+          </details>`;
             return chapterHTML;
           })
           .join("");
@@ -262,18 +298,16 @@
             let topicHTML = "";
             if (typeof topic === "string") {
               // This is a simple subtopic
-              topicHTML = `<li><a href="/notes?chapter=${encodeURIComponent(
+              topicHTML = `<li><a href="/subtopic/${encodeURIComponent(
                 chapter
-              )}&topic=${encodeURIComponent(
-                parentTopic
-              )}&subtopic=${encodeURIComponent(
+              )}/${encodeURIComponent(parentTopic)}/${encodeURIComponent(
                 topic
               )}" target="_blank">${topic}</a></li>`;
             } else {
               // This is a topic with potential nested subtopics
-              topicHTML = `<li><strong><a href="/topic_notes?chapter=${encodeURIComponent(
+              topicHTML = `<li><strong><a href="/topic/${encodeURIComponent(
                 chapter
-              )}&topic=${encodeURIComponent(topic.topic)}" target="_blank">${
+              )}/${encodeURIComponent(topic.topic)}" target="_blank">${
                 topic.topic
               }</a></strong>`;
               if (topic.sub_topics && topic.sub_topics.length > 0) {
@@ -309,6 +343,10 @@
         const toastElement = document.getElementById("uploadToast");
         const toast = new bootstrap.Toast(toastElement);
         toast.show();
+      }
+
+      function openQuiz(chapter) {
+        window.open(`/quiz/${encodeURIComponent(chapter)}`, "_blank");
       }
     </script>
 
